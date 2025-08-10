@@ -1,0 +1,23 @@
+# Paint Brain - Minimal GitHub Package
+
+This contains the core source code for Paint Brain, optimized for GitHub upload.
+
+## What's included:
+- Source code (client, server, shared)
+- Configuration files  
+- Essential documentation
+- Basic public assets only
+
+## What's excluded:
+- node_modules (run: npm install)
+- Large icon libraries (can be downloaded separately)
+- User uploads and demo assets
+- Build artifacts
+
+## Setup after upload:
+1. Clone/download from GitHub
+2. Run: npm install
+3. Add your environment variables
+4. Run: npm run dev
+
+Generated: 2025-08-10T21:15:52.478Z

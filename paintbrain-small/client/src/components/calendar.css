@@ -1,0 +1,89 @@
+/* Paint Brain Dark Mode Calendar */
+.calendar-container {
+  max-width: 450px;
+  margin: 0 auto;
+  background-color: #000000;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 16px;
+  border: 2px solid #D4A574;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.nav-button {
+  background: none;
+  border: none;
+  color: #8B5FBF;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.nav-button:hover {
+  background-color: rgba(139, 95, 191, 0.2);
+}
+
+.month-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #569CD6;
+  margin: 0;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.day-name {
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #6B7280;
+  padding: 8px 0;
+}
+
+.calendar-cell {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  color: #ffffff;
+}
+
+.calendar-cell:hover {
+  background-color: rgba(139, 95, 191, 0.2);
+}
+
+.calendar-cell.today {
+  background-color: #F44747;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.calendar-cell.selected {
+  background-color: #6A9955;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.calendar-cell:empty {
+  cursor: default;
+}
+
+.calendar-cell:empty:hover {
+  background-color: transparent;
+}

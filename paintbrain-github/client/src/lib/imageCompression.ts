@@ -1,0 +1,199 @@
+/**
+ * Client-side image compression utility
+ * Compresses images to reduce file size while maintaining quality
+ */
+
+export interface CompressionOptions {
+  maxWidth?: number;
+  maxHeight?: number;
+  quality?: number;
+  format?: 'jpeg' | 'webp' | 'png';
+}
+
+export interface CompressionResult {
+  file: File;
+  originalSize: number;
+  compressedSize: number;
+  compressionRatio: number;
+}
+
+export async function compressImage(
+  file: File,
+  options: CompressionOptions = {}
+): Promise<CompressionResult> {
+  const {
+    maxWidth = 1920,
+    maxHeight = 1080,
+    quality = 0.8,
+    format = 'jpeg'
+  } = options;
+
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = () => {
+      // Calculate new dimensions while maintaining aspect ratio
+      let { width, height } = img;
+      
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width *= ratio;
+        height *= ratio;
+      }
+
+      // Set canvas dimensions
+      canvas.width = width;
+      canvas.height = height;
+
+      // Draw and compress image
+      ctx!.drawImage(img, 0, 0, width, height);
+      
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('Compression failed'));
+            return;
+          }
+
+          const compressedFile = new File(
+            [blob],
+            file.name.replace(/\.[^/.]+$/, `.${format === 'jpeg' ? 'jpg' : format}`),
+            {
+              type: `image/${format}`,
+              lastModified: Date.now()
+            }
+          );
+
+          const originalSize = file.size;
+          const compressedSize = compressedFile.size;
+          const compressionRatio = ((originalSize - compressedSize) / originalSize) * 100;
+
+          resolve({
+            file: compressedFile,
+            originalSize,
+            compressedSize,
+            compressionRatio
+          });
+        },
+        `image/${format}`,
+        quality
+      );
+    };
+
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+export async function compressMultipleImages(
+  files: File[],
+  progressCallback?: (progress: { currentFile: number; totalFiles: number }) => void,
+  compressionType: 'photo' | 'receipt' = 'photo'
+): Promise<{ compressedFiles: File[]; totalCompressedSizeBytes: number }> {
+  const imageFiles = files.filter(file => file.type.startsWith('image/'));
+  const compressedResults: File[] = [];
+  let totalCompressedSize = 0;
+  
+  // Different compression settings for photos vs receipts
+  const compressionOptions = compressionType === 'photo' 
+    ? getPhotoCompressionSettings()
+    : {
+        maxWidth: 1920,    // Standard resolution for receipts
+        maxHeight: 1080,   // Optimized for OCR
+        quality: 0.7,      // Lower quality for cost savings
+        format: 'jpeg' as const
+      };
+  
+  for (let i = 0; i < imageFiles.length; i++) {
+    const file = imageFiles[i];
+    
+    // Report progress
+    if (progressCallback) {
+      progressCallback({ currentFile: i + 1, totalFiles: imageFiles.length });
+    }
+    
+    try {
+      // If original quality is selected for photos, skip compression
+      if (compressionType === 'photo' && compressionOptions === null) {
+        compressedResults.push(file);
+        totalCompressedSize += file.size;
+        console.log(`Photo using original quality: ${file.name} (${formatFileSize(file.size)})`);
+      } else {
+        const result = await compressImage(file, compressionOptions!);
+        compressedResults.push(result.file);
+        totalCompressedSize += result.compressedSize;
+        
+        console.log(`${compressionType} compressed ${file.name}: ${formatFileSize(result.originalSize)} → ${formatFileSize(result.compressedSize)} (${result.compressionRatio.toFixed(1)}% reduction)`);
+      }
+    } catch (error) {
+      console.error(`Failed to compress ${file.name}:`, error);
+      // If compression fails, use original file
+      compressedResults.push(file);
+      totalCompressedSize += file.size;
+    }
+  }
+  
+  return {
+    compressedFiles: compressedResults,
+    totalCompressedSizeBytes: totalCompressedSize
+  };
+}
+
+// New convenience functions for specific use cases
+export async function compressPhotos(
+  files: File[],
+  progressCallback?: (progress: { currentFile: number; totalFiles: number }) => void
+): Promise<{ compressedFiles: File[]; totalCompressedSizeBytes: number }> {
+  return compressMultipleImages(files, progressCallback, 'photo');
+}
+
+export async function compressReceipts(
+  files: File[],
+  progressCallback?: (progress: { currentFile: number; totalFiles: number }) => void
+): Promise<{ compressedFiles: File[]; totalCompressedSizeBytes: number }> {
+  return compressMultipleImages(files, progressCallback, 'receipt');
+}
+
+// Get photo compression settings based on user preference
+function getPhotoCompressionSettings(): CompressionOptions | null {
+  const level = localStorage.getItem('photoCompressionLevel') || 'medium';
+  
+  switch (level) {
+    case 'low':
+      return {
+        maxWidth: 1200,
+        maxHeight: 800,
+        quality: 0.6,
+        format: 'jpeg' as const
+      };
+    case 'high':
+      return {
+        maxWidth: 2400,
+        maxHeight: 1600,
+        quality: 0.9,
+        format: 'jpeg' as const
+      };
+    case 'original':
+      return null; // No compression - use original file
+    case 'medium':
+    default:
+      return {
+        maxWidth: 1920,
+        maxHeight: 1080,
+        quality: 0.8,
+        format: 'jpeg' as const
+      };
+  }
+}
