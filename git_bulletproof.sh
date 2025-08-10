@@ -1,31 +1,38 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# git_bulletproof.sh — Automatically saves, commits, and pushes changes to GitHub
+# Usage:
+#   ./git_bulletproof.sh           -> auto-commit with timestamp
+#   ./git_bulletproof.sh "message" -> commit with custom message
+
 set -e
 
-# 0) Clean any stuck git ops/locks
-git rebase --abort 2>/dev/null || true
-git cherry-pick --abort 2>/dev/null || true
-git merge --abort 2>/dev/null || true
-rm -rf .git/rebase-merge .git/rebase-apply
-rm -f .git/index.lock .git/packed-refs.lock .git/config.lock .git/refs/remotes/origin/main.lock
-
-# 1) Add everything and commit (message arg or timestamp)
-MSG="$*"
-[ -z "$MSG" ] && MSG="auto: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-git add -A
-git commit -m "$MSG" || true
-
-# 2) Push, auto-handle upstream / behind-remote
-set +e
-git push
-PUSH_STATUS=$?
-set -e
-
-if [ $PUSH_STATUS -ne 0 ]; then
-  CUR=$(git rev-parse --abbrev-ref HEAD)
-  git push -u origin "$CUR" || {
-    git pull --rebase origin "$CUR" || true
-    git push -u origin "$CUR" || git push -u origin "$CUR" --force-with-lease
-  }
+# Step 1: Clean up possible stale Git lock files
+if [ -f .git/index.lock ]; then
+  echo "⚠ Removing stale Git index.lock file..."
+  rm -f .git/index.lock
 fi
 
-echo "✅ Saved & pushed successfully."
+# Step 2: Stage all changes
+git add -A
+
+# Step 3: Create commit message
+if [ -n "$1" ]; then
+  COMMIT_MSG="$1"
+else
+  COMMIT_MSG="Auto-save on $(date '+%Y-%m-%d %H:%M:%S')"
+fi
+
+# Step 4: Commit changes (ignore error if no changes to commit)
+git commit -m "$COMMIT_MSG" || echo "ℹ No changes to commit."
+
+# Step 5: Ensure we're on main/master and tracking remote
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+git branch --set-upstream-to=origin/$CURRENT_BRANCH $CURRENT_BRANCH 2>/dev/null || true
+
+# Step 6: Pull latest changes before pushing (avoid conflicts)
+git pull --rebase origin $CURRENT_BRANCH || echo "⚠ Could not rebase, continuing..."
+
+# Step 7: Push changes
+git push origin $CURRENT_BRANCH
+
+echo "✅ Push complete!"
