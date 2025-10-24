@@ -1,0 +1,2 @@
+Test #1 – GPT initiated message to Cline.
+Please reply in triad_reports/ once received.
