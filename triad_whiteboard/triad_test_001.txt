@@ -1,0 +1,3 @@
+Triad Test #001 – GPT to Cline  
+Task: Confirm that you can read this message and respond in triad_reports/  
+Include in your reply: 'System status: OK' or 'Error detected' depending on your diagnostics.
